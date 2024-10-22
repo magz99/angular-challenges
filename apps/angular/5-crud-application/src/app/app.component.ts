@@ -1,51 +1,40 @@
 import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 import { randText } from '@ngneat/falso';
+import { Observable } from 'rxjs';
+import { Todo } from './data.model';
+import { TodoComponentStore } from './todo.component.store';
 
 @Component({
   standalone: true,
   imports: [CommonModule],
   selector: 'app-root',
   template: `
-    <div *ngFor="let todo of todos">
-      {{ todo.title }}
-      <button (click)="update(todo)">Update</button>
-    </div>
+    @if (todos$ | async; as todos) {
+      <div *ngFor="let todo of todos; trackBy: todoTrackBy">
+        {{ todo.title }}
+        <button (click)="update(todo)">Update</button>
+      </div>
+    }
   `,
   styles: [],
+  providers: [TodoComponentStore],
 })
-export class AppComponent implements OnInit {
-  todos!: any[];
+export class AppComponent {
+  todos$: Observable<Todo[] | undefined> = this.store.todos$;
 
-  constructor(private http: HttpClient) {}
-
-  ngOnInit(): void {
-    this.http
-      .get<any[]>('https://jsonplaceholder.typicode.com/todos')
-      .subscribe((todos) => {
-        this.todos = todos;
-      });
+  constructor(private readonly store: TodoComponentStore) {
+    this.store.getTodos();
   }
 
-  update(todo: any) {
-    this.http
-      .put<any>(
-        `https://jsonplaceholder.typicode.com/todos/${todo.id}`,
-        JSON.stringify({
-          todo: todo.id,
-          title: randText(),
-          body: todo.body,
-          userId: todo.userId,
-        }),
-        {
-          headers: {
-            'Content-type': 'application/json; charset=UTF-8',
-          },
-        },
-      )
-      .subscribe((todoUpdated: any) => {
-        this.todos[todoUpdated.id - 1] = todoUpdated;
-      });
+  todoTrackBy(index: number, item: Todo) {
+    return item;
+  }
+
+  update(todo: Todo) {
+    this.store.updateSingleTodo({
+      ...todo,
+      title: randText(),
+    });
   }
 }
